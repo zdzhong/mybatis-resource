@@ -26,6 +26,7 @@ import java.net.URL;
 public class ClassLoaderWrapper {
 
   ClassLoader defaultClassLoader;
+  // 系统类加载器
   ClassLoader systemClassLoader;
 
   ClassLoaderWrapper() {
@@ -113,10 +114,12 @@ public class ClassLoaderWrapper {
       if (null != cl) {
 
         // try to find the resource as passed
+        // 先从资源路径获取一个InputStream如果不为为空则返回
         InputStream returnValue = cl.getResourceAsStream(resource);
 
         // now, some class loaders want this leading "/", so we'll add it and try again if we didn't find the resource
         if (null == returnValue) {
+          // 如果资源路径下的为空则，需要在路径前面加个"/"
           returnValue = cl.getResourceAsStream("/" + resource);
         }
 
@@ -203,11 +206,11 @@ public class ClassLoaderWrapper {
 
   ClassLoader[] getClassLoaders(ClassLoader classLoader) {
     return new ClassLoader[]{
-        classLoader,
-        defaultClassLoader,
-        Thread.currentThread().getContextClassLoader(),
-        getClass().getClassLoader(),
-        systemClassLoader};
+            classLoader,
+            defaultClassLoader,
+            Thread.currentThread().getContextClassLoader(),
+            getClass().getClassLoader(),
+            systemClassLoader};
   }
 
 }

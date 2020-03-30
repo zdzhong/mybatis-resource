@@ -44,7 +44,9 @@ public class XNode {
     this.node = node;
     this.name = node.getNodeName();
     this.variables = variables;
+    // 将所有节点信息封装到attributes对象里面
     this.attributes = parseAttributes(node);
+    // 获取标签中的文本   < >text</> ------text
     this.body = parseBody(node);
   }
 
@@ -82,13 +84,13 @@ public class XNode {
         builder.insert(0, "_");
       }
       String value = current.getStringAttribute("id",
-          current.getStringAttribute("value",
-              current.getStringAttribute("property", (String) null)));
+              current.getStringAttribute("value",
+                      current.getStringAttribute("property", (String) null)));
       if (value != null) {
         value = value.replace('.', '_');
         builder.insert(0, "]");
         builder.insert(0,
-            value);
+                value);
         builder.insert(0, "[");
       }
       builder.insert(0, current.getName());
@@ -215,12 +217,11 @@ public class XNode {
    *
    * <p>
    * If attribute value is absent, return value that provided from supplier of default value.
+   * </p>
    *
-   * @param name
-   *          attribute name
-   * @param defSupplier
-   *          a supplier of default value
-   * @return the string attribute
+   * @param name attribute name
+   * @param defSupplier a supplier of default value
+   *
    * @since 3.5.4
    */
   public String getStringAttribute(String name, Supplier<String> defSupplier) {
@@ -323,6 +324,7 @@ public class XNode {
   public Properties getChildrenAsProperties() {
     Properties properties = new Properties();
     for (XNode child : getChildren()) {
+      // 获取<property name="" value="">这个标签的信息
       String name = child.getStringAttribute("name");
       String value = child.getStringAttribute("value");
       if (name != null && value != null) {
@@ -409,7 +411,7 @@ public class XNode {
 
   private String getBodyData(Node child) {
     if (child.getNodeType() == Node.CDATA_SECTION_NODE
-        || child.getNodeType() == Node.TEXT_NODE) {
+            || child.getNodeType() == Node.TEXT_NODE) {
       String data = ((CharacterData) child).getData();
       data = PropertyParser.parse(data, variables);
       return data;

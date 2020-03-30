@@ -16,6 +16,7 @@
 package org.apache.ibatis.scripting.xmltags;
 
 /**
+ * StaticTextSqlNode是一个文本节点，且不包含&{}
  * @author Clinton Begin
  */
 public class StaticTextSqlNode implements SqlNode {

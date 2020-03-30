@@ -1,5 +1,5 @@
 /**
- *    Copyright 2009-2020 the original author or authors.
+ *    Copyright 2009-2019 the original author or authors.
  *
  *    Licensed under the Apache License, Version 2.0 (the "License");
  *    you may not use this file except in compliance with the License.
@@ -52,11 +52,8 @@ public class XMLIncludeTransformer {
 
   /**
    * Recursively apply includes through all SQL fragments.
-   *
-   * @param source
-   *          Include node in DOM tree
-   * @param variablesContext
-   *          Current context for static variables with values
+   * @param source Include node in DOM tree
+   * @param variablesContext Current context for static variables with values
    */
   private void applyIncludes(Node source, final Properties variablesContext, boolean included) {
     if (source.getNodeName().equals("include")) {
@@ -66,10 +63,30 @@ public class XMLIncludeTransformer {
       if (toInclude.getOwnerDocument() != source.getOwnerDocument()) {
         toInclude = source.getOwnerDocument().importNode(toInclude, true);
       }
+      // 将<include refid="sql1">标签替换为refid指定sql1 -- <sql id="sql1">text<sql/>标签
+      // 假设有如下代码
+      /*
+        <sql id="baseTable">blog</sql>
+
+        <select id="selectBlog" resultType="org.mybatis.example.Blog">
+          select * from <include refid="baseTable" /> where id = #{id}
+        </select>
+       */
+      // 这一步的目的是将<include>标签替换为<sql>标签
+      // 替换后得到
+      /*
+        <select id="selectBlog" resultType="org.mybatis.example.Blog">
+          select * from <sql id="baseTable">blog</sql> where id = #{id}
+        </select>
+       */
       source.getParentNode().replaceChild(toInclude, source);
+      // <sql id="baseTable">blog</sql>存在一个子节点标签 text类型的Node也就是blog
       while (toInclude.hasChildNodes()) {
+        // 将toInclude.getFirstChild()插入到toInclude之前
+        // 将blog类型的Node插入到<sql id="baseTable">blog</sql>这个标签之前
         toInclude.getParentNode().insertBefore(toInclude.getFirstChild(), toInclude);
       }
+      // 移除<sql id="baseTable">blog</sql>这个标签，因为已经替换好了
       toInclude.getParentNode().removeChild(toInclude);
     } else if (source.getNodeType() == Node.ELEMENT_NODE) {
       if (included && !variablesContext.isEmpty()) {
@@ -85,12 +102,15 @@ public class XMLIncludeTransformer {
         applyIncludes(children.item(i), variablesContext, included);
       }
     } else if (included && (source.getNodeType() == Node.TEXT_NODE || source.getNodeType() == Node.CDATA_SECTION_NODE)
-        && !variablesContext.isEmpty()) {
+            && !variablesContext.isEmpty()) {
       // replace variables in text node
       source.setNodeValue(PropertyParser.parse(source.getNodeValue(), variablesContext));
     }
   }
 
+  /**
+   * 获取Sql节点
+   */
   private Node findSqlFragment(String refid, Properties variables) {
     refid = PropertyParser.parse(refid, variables);
     refid = builderAssistant.applyCurrentNamespace(refid, true);
@@ -108,11 +128,8 @@ public class XMLIncludeTransformer {
 
   /**
    * Read placeholders and their values from include node definition.
-   *
-   * @param node
-   *          Include node instance
-   * @param inheritedVariablesContext
-   *          Current context used for replace variables in new variables values
+   * @param node Include node instance
+   * @param inheritedVariablesContext Current context used for replace variables in new variables values
    * @return variables context from include instance (no inherited values)
    */
   private Properties getVariablesContext(Node node, Properties inheritedVariablesContext) {

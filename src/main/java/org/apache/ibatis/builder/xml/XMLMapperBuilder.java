@@ -18,7 +18,6 @@ package org.apache.ibatis.builder.xml;
 import java.io.InputStream;
 import java.io.Reader;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -69,7 +68,7 @@ public class XMLMapperBuilder extends BaseBuilder {
   @Deprecated
   public XMLMapperBuilder(Reader reader, Configuration configuration, String resource, Map<String, XNode> sqlFragments) {
     this(new XPathParser(reader, true, configuration.getVariables(), new XMLMapperEntityResolver()),
-        configuration, resource, sqlFragments);
+            configuration, resource, sqlFragments);
   }
 
   public XMLMapperBuilder(InputStream inputStream, Configuration configuration, String resource, Map<String, XNode> sqlFragments, String namespace) {
@@ -79,7 +78,7 @@ public class XMLMapperBuilder extends BaseBuilder {
 
   public XMLMapperBuilder(InputStream inputStream, Configuration configuration, String resource, Map<String, XNode> sqlFragments) {
     this(new XPathParser(inputStream, true, configuration.getVariables(), new XMLMapperEntityResolver()),
-        configuration, resource, sqlFragments);
+            configuration, resource, sqlFragments);
   }
 
   private XMLMapperBuilder(XPathParser parser, Configuration configuration, String resource, Map<String, XNode> sqlFragments) {
@@ -91,7 +90,9 @@ public class XMLMapperBuilder extends BaseBuilder {
   }
 
   public void parse() {
+    // 首先判断是否已经加载过该资源了
     if (!configuration.isResourceLoaded(resource)) {
+      // 解析对应的mapper.xml
       configurationElement(parser.evalNode("/mapper"));
       configuration.addLoadedResource(resource);
       bindMapperForNamespace();
@@ -108,16 +109,24 @@ public class XMLMapperBuilder extends BaseBuilder {
 
   private void configurationElement(XNode context) {
     try {
+      // 获取mapper.xml文件中的namespace
       String namespace = context.getStringAttribute("namespace");
       if (namespace == null || namespace.isEmpty()) {
         throw new BuilderException("Mapper's namespace cannot be empty");
       }
+      // 设置当前的namespace
       builderAssistant.setCurrentNamespace(namespace);
+      // 解析cache-ref节点
       cacheRefElement(context.evalNode("cache-ref"));
+      // 解析cache节点
       cacheElement(context.evalNode("cache"));
+      // 解析parameterMap节点
       parameterMapElement(context.evalNodes("/mapper/parameterMap"));
+      // 解析resultMap节点
       resultMapElements(context.evalNodes("/mapper/resultMap"));
+      // 解析sql节点
       sqlElement(context.evalNodes("/mapper/sql"));
+      // 解析select|insert|update|delete节点
       buildStatementFromContext(context.evalNodes("select|insert|update|delete"));
     } catch (Exception e) {
       throw new BuilderException("Error parsing Mapper XML. The XML location is '" + resource + "'. Cause: " + e, e);
@@ -133,6 +142,7 @@ public class XMLMapperBuilder extends BaseBuilder {
 
   private void buildStatementFromContext(List<XNode> list, String requiredDatabaseId) {
     for (XNode context : list) {
+      // 对于每个crud标签节点都会获取一个新的statement执行器
       final XMLStatementBuilder statementParser = new XMLStatementBuilder(configuration, builderAssistant, context, requiredDatabaseId);
       try {
         statementParser.parseStatementNode();
@@ -257,9 +267,9 @@ public class XMLMapperBuilder extends BaseBuilder {
   private ResultMap resultMapElement(XNode resultMapNode, List<ResultMapping> additionalResultMappings, Class<?> enclosingType) {
     ErrorContext.instance().activity("processing " + resultMapNode.getValueBasedIdentifier());
     String type = resultMapNode.getStringAttribute("type",
-        resultMapNode.getStringAttribute("ofType",
-            resultMapNode.getStringAttribute("resultType",
-                resultMapNode.getStringAttribute("javaType"))));
+            resultMapNode.getStringAttribute("ofType",
+                    resultMapNode.getStringAttribute("resultType",
+                            resultMapNode.getStringAttribute("javaType"))));
     Class<?> typeClass = resolveClass(type);
     if (typeClass == null) {
       typeClass = inheritEnclosingType(resultMapNode, enclosingType);
@@ -287,7 +297,7 @@ public class XMLMapperBuilder extends BaseBuilder {
     ResultMapResolver resultMapResolver = new ResultMapResolver(builderAssistant, id, typeClass, extend, discriminator, resultMappings, autoMapping);
     try {
       return resultMapResolver.resolve();
-    } catch (IncompleteElementException e) {
+    } catch (IncompleteElementException  e) {
       configuration.addIncompleteResultMap(resultMapResolver);
       throw e;
     }
@@ -380,7 +390,7 @@ public class XMLMapperBuilder extends BaseBuilder {
     String jdbcType = context.getStringAttribute("jdbcType");
     String nestedSelect = context.getStringAttribute("select");
     String nestedResultMap = context.getStringAttribute("resultMap", () ->
-        processNestedResultMappings(context, Collections.emptyList(), resultType));
+            processNestedResultMappings(context, Collections.emptyList(), resultType));
     String notNullColumn = context.getStringAttribute("notNullColumn");
     String columnPrefix = context.getStringAttribute("columnPrefix");
     String typeHandler = context.getStringAttribute("typeHandler");
@@ -394,23 +404,26 @@ public class XMLMapperBuilder extends BaseBuilder {
   }
 
   private String processNestedResultMappings(XNode context, List<ResultMapping> resultMappings, Class<?> enclosingType) {
-    if (Arrays.asList("association", "collection", "case").contains(context.getName())
-        && context.getStringAttribute("select") == null) {
-      validateCollection(context, enclosingType);
-      ResultMap resultMap = resultMapElement(context, resultMappings, enclosingType);
-      return resultMap.getId();
+    if ("association".equals(context.getName())
+            || "collection".equals(context.getName())
+            || "case".equals(context.getName())) {
+      if (context.getStringAttribute("select") == null) {
+        validateCollection(context, enclosingType);
+        ResultMap resultMap = resultMapElement(context, resultMappings, enclosingType);
+        return resultMap.getId();
+      }
     }
     return null;
   }
 
   protected void validateCollection(XNode context, Class<?> enclosingType) {
     if ("collection".equals(context.getName()) && context.getStringAttribute("resultMap") == null
-        && context.getStringAttribute("javaType") == null) {
+            && context.getStringAttribute("javaType") == null) {
       MetaClass metaResultType = MetaClass.forClass(enclosingType, configuration.getReflectorFactory());
       String property = context.getStringAttribute("property");
       if (!metaResultType.hasSetter(property)) {
         throw new BuilderException(
-            "Ambiguous collection type for property '" + property + "'. You must specify 'javaType' or 'resultMap'.");
+                "Ambiguous collection type for property '" + property + "'. You must specify 'javaType' or 'resultMap'.");
       }
     }
   }
@@ -422,14 +435,16 @@ public class XMLMapperBuilder extends BaseBuilder {
       try {
         boundType = Resources.classForName(namespace);
       } catch (ClassNotFoundException e) {
-        // ignore, bound type is not required
+        //ignore, bound type is not required
       }
-      if (boundType != null && !configuration.hasMapper(boundType)) {
-        // Spring may not know the real resource name so we set a flag
-        // to prevent loading again this resource from the mapper interface
-        // look at MapperAnnotationBuilder#loadXmlResource
-        configuration.addLoadedResource("namespace:" + namespace);
-        configuration.addMapper(boundType);
+      if (boundType != null) {
+        if (!configuration.hasMapper(boundType)) {
+          // Spring may not know the real resource name so we set a flag
+          // to prevent loading again this resource from the mapper interface
+          // look at MapperAnnotationBuilder#loadXmlResource
+          configuration.addLoadedResource("namespace:" + namespace);
+          configuration.addMapper(boundType);
+        }
       }
     }
   }

@@ -83,6 +83,7 @@ public class XMLConfigBuilder extends BaseBuilder {
   }
 
   private XMLConfigBuilder(XPathParser parser, String environment, Properties props) {
+    // new Configuration()这个会初始化一个typeAliasRegistry这个对象，里面包含pooled
     super(new Configuration());
     ErrorContext.instance().resource("SQL Mapper Configuration");
     this.configuration.setVariables(props);
@@ -96,13 +97,17 @@ public class XMLConfigBuilder extends BaseBuilder {
       throw new BuilderException("Each XMLConfigBuilder can only be used once.");
     }
     parsed = true;
+    // parser.evalNode() 将mybatis-config.xml中所有节点信息封装在XNode中
     parseConfiguration(parser.evalNode("/configuration"));
     return configuration;
   }
 
+  /**
+   *
+   */
   private void parseConfiguration(XNode root) {
     try {
-      // issue #117 read properties first
+      //issue #117 read properties first
       propertiesElement(root.evalNode("properties"));
       Properties settings = settingsAsProperties(root.evalNode("settings"));
       loadCustomVfs(settings);
@@ -114,9 +119,11 @@ public class XMLConfigBuilder extends BaseBuilder {
       reflectorFactoryElement(root.evalNode("reflectorFactory"));
       settingsElement(settings);
       // read it after objectFactory and objectWrapperFactory issue #631
+      // 解析environments节点下所有信息，封装在Configuration.environment这个属性当中
       environmentsElement(root.evalNode("environments"));
       databaseIdProviderElement(root.evalNode("databaseIdProvider"));
       typeHandlerElement(root.evalNode("typeHandlers"));
+      //
       mapperElement(root.evalNode("mappers"));
     } catch (Exception e) {
       throw new BuilderException("Error parsing SQL Mapper Configuration. Cause: " + e, e);
@@ -273,17 +280,22 @@ public class XMLConfigBuilder extends BaseBuilder {
   private void environmentsElement(XNode context) throws Exception {
     if (context != null) {
       if (environment == null) {
+        // <environments default="id"> 获取default的值
         environment = context.getStringAttribute("default");
       }
+      // 遍历所有子节点（也就是<environment id="     "> 节点）找到environment节点id属性与environments的default值相等的标签
       for (XNode child : context.getChildren()) {
         String id = child.getStringAttribute("id");
+        // 如果是对应的environment，则获取所有子节点的节点信息进行
         if (isSpecifiedEnvironment(id)) {
+          // 事务
           TransactionFactory txFactory = transactionManagerElement(child.evalNode("transactionManager"));
+          // 数据库连接数据源
           DataSourceFactory dsFactory = dataSourceElement(child.evalNode("dataSource"));
           DataSource dataSource = dsFactory.getDataSource();
           Environment.Builder environmentBuilder = new Environment.Builder(id)
-              .transactionFactory(txFactory)
-              .dataSource(dataSource);
+                  .transactionFactory(txFactory)
+                  .dataSource(dataSource);
           configuration.setEnvironment(environmentBuilder.build());
         }
       }
@@ -311,13 +323,10 @@ public class XMLConfigBuilder extends BaseBuilder {
 
   private TransactionFactory transactionManagerElement(XNode context) throws Exception {
     if (context != null) {
-      // JDBC驱动类     JDBC
+      // 获取<transactionManager type="JDBC"/> type的值
       String type = context.getStringAttribute("type");
       Properties props = context.getChildrenAsProperties();
-      // JDBC对应的TransactionFactory是JdbcTransactionFactory，这个值在new Configuration()的时候就装载了
       TransactionFactory factory = (TransactionFactory) resolveClass(type).getDeclaredConstructor().newInstance();
-      // 这个setProperties方法是TransactionFactory接口的一个default方法，
-      // 里面是空的，而且JdbcTransactionFactory这个实现类并没有重写setProperties方法
       factory.setProperties(props);
       return factory;
     }
@@ -326,9 +335,23 @@ public class XMLConfigBuilder extends BaseBuilder {
 
   private DataSourceFactory dataSourceElement(XNode context) throws Exception {
     if (context != null) {
+      // 获取<dataSource type="POOLED"> type的值
       String type = context.getStringAttribute("type");
+      // <property name="driver" value="com.mysql.jdbc.Driver"/>
+      // <property name="url" value="jdbc:mysql//localhost:3306/demo?characterEncoding=utf-8"/>
+      // <property name="username" value="root"/>
+      // <property name="password" value="123456"/>
+      // 获取这些连接信息封装到props对象中
       Properties props = context.getChildrenAsProperties();
+      // 获取一个数据源工厂
+      // 通过反射获取一个DataSourceFactory实例
+      // 1.通过POOLED别名获取一个org.apache.ibatis.datasource.pooled.PooledDataSourceFactory.class
+      // 值得注意的是PooledDataSourceFactory继承至UnpooledDataSourceFactory，而UnpooledDataSourceFactory实现了DataSourceFactory接口
+      // 而DataSourceFactory有两个实现类UnpooledDataSourceFactory和JndiDataSourceFactory，默认使用的是PooledDataSourceFactory（PooledDataSourceFactory继承UnpooledDataSourceFactory）
+      // 2.通过Class对象获取所有的构造方法包括私有的(PooledDataSourceFactory这个只有一个公共的构造器)
+      // 3.通过构造器newInstance获取一个实例
       DataSourceFactory factory = (DataSourceFactory) resolveClass(type).getDeclaredConstructor().newInstance();
+      // 将数据库连接信息赋值到factory中
       factory.setProperties(props);
       return factory;
     }
@@ -365,7 +388,9 @@ public class XMLConfigBuilder extends BaseBuilder {
   private void mapperElement(XNode parent) throws Exception {
     if (parent != null) {
       for (XNode child : parent.getChildren()) {
+        // 通过包扫描mapper
         if ("package".equals(child.getName())) {
+          // 获取包名
           String mapperPackage = child.getStringAttribute("name");
           configuration.addMappers(mapperPackage);
         } else {
@@ -373,8 +398,11 @@ public class XMLConfigBuilder extends BaseBuilder {
           String url = child.getStringAttribute("url");
           String mapperClass = child.getStringAttribute("class");
           if (resource != null && url == null && mapperClass == null) {
+            // 通过xml文件解析
             ErrorContext.instance().resource(resource);
+            // <mapper resource="*.xml"> 通过*.xml获取一个输入流
             InputStream inputStream = Resources.getResourceAsStream(resource);
+            // 获取一个mapper执行器，会初始化一个MapperBuilderAssistant
             XMLMapperBuilder mapperParser = new XMLMapperBuilder(inputStream, configuration, resource, configuration.getSqlFragments());
             mapperParser.parse();
           } else if (resource == null && url != null && mapperClass == null) {
