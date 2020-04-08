@@ -4,6 +4,7 @@ public class Blog {
   private Integer id;
 
   private String content;
+  private Long age;
 
   @Override
   public String toString() {
@@ -28,4 +29,12 @@ public class Blog {
   public void setContent(String content) {
     this.content = content;
   }
+
+    public void setAge(Long age) {
+        this.age = age;
+    }
+
+    public Long getAge() {
+        return age;
+    }
 }

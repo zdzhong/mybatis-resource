@@ -95,6 +95,7 @@ public class XMLMapperBuilder extends BaseBuilder {
       // 解析对应的mapper.xml
       configurationElement(parser.evalNode("/mapper"));
       configuration.addLoadedResource(resource);
+      // 将当前的mapper添加到Configuration下面的mapperRegistry map集合中
       bindMapperForNamespace();
     }
 
@@ -433,6 +434,8 @@ public class XMLMapperBuilder extends BaseBuilder {
     if (namespace != null) {
       Class<?> boundType = null;
       try {
+        // 获取当前mapper接口的Class对象，后面通过MapperProxyFactory生产MapperProxy
+        // 也就是所说的mapper动态代理
         boundType = Resources.classForName(namespace);
       } catch (ClassNotFoundException e) {
         //ignore, bound type is not required
@@ -443,6 +446,7 @@ public class XMLMapperBuilder extends BaseBuilder {
           // to prevent loading again this resource from the mapper interface
           // look at MapperAnnotationBuilder#loadXmlResource
           configuration.addLoadedResource("namespace:" + namespace);
+          // 将当前的Class对象加入到mapperRegistry集合中
           configuration.addMapper(boundType);
         }
       }

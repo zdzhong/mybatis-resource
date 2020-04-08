@@ -222,8 +222,11 @@ public class MapperMethod {
     private final SqlCommandType type;
 
     public SqlCommand(Configuration configuration, Class<?> mapperInterface, Method method) {
+      // 获取当前方法的name
       final String methodName = method.getName();
+      // 获取当前方法所属的Class对象
       final Class<?> declaringClass = method.getDeclaringClass();
+      // 获取ms
       MappedStatement ms = resolveMappedStatement(mapperInterface, methodName, declaringClass,
           configuration);
       if (ms == null) {
@@ -253,12 +256,17 @@ public class MapperMethod {
 
     private MappedStatement resolveMappedStatement(Class<?> mapperInterface, String methodName,
         Class<?> declaringClass, Configuration configuration) {
+      // 通过全限定类名 + methodName 获取statementId
       String statementId = mapperInterface.getName() + "." + methodName;
       if (configuration.hasStatement(statementId)) {
+        // 判断configuration对象中是否存在该statementId，有则直接取
         return configuration.getMappedStatement(statementId);
       } else if (mapperInterface.equals(declaringClass)) {
+        // 如果当前的mapperInterface与method所属的接口相等，返回null
         return null;
       }
+      // 如果没有从configuration中未获取到并且当前的mapperInterface与method所属的接口不相等
+      // 则去解析mapperInterface的父类接口，在进行解析
       for (Class<?> superInterface : mapperInterface.getInterfaces()) {
         if (declaringClass.isAssignableFrom(superInterface)) {
           MappedStatement ms = resolveMappedStatement(superInterface, methodName,

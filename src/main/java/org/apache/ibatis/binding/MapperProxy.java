@@ -91,9 +91,15 @@ public class MapperProxy<T> implements InvocationHandler, Serializable {
 
   private MapperMethodInvoker cachedInvoker(Method method) throws Throwable {
     try {
+      // Map.computeIfAbsent 如果当前method如果为空，则调用m ->{} 并将其存入map中，否则直接返回
       return methodCache.computeIfAbsent(method, m -> {
+        // 判断当前方法m是否为default方法
         if (m.isDefault()) {
           try {
+            // 通过判断privateLookupInMethod是否为空来控制是Java8还是Java9
+            // 这个实现是通过静态代码块中MethodHandles.privateLookupIn来实现
+            // 在Java8中MethodHandles类没有privateLookupIn方法，会抛NoSuchMethodException异常
+            // 通过捕获该异常将privateLookupInMethod赋值为null
             if (privateLookupInMethod == null) {
               return new DefaultMethodInvoker(getMethodHandleJava8(method));
             } else {
